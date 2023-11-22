@@ -225,6 +225,29 @@ LoadGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
     return glyph;
 }
 
+FitRectIntoAtlas :: (atlas : GlyphAtlas, width : s32, height : s32) -> bool #must, x : s32, y : s32
+{
+    if width > xx atlas.width || height > xx atlas.height
+        return false, 0, 0;
+
+    pen_x := atlas.pen_x;
+    pen_y := atlas.pen_y;
+
+    if pen_y + height > xx atlas.height
+        return false, 0, 0;
+
+    if pen_x + width > xx atlas.width
+    {
+        pen_x = 0;
+        pen_y = atlas.row_end;
+    }
+
+    if pen_y + height > xx atlas.height
+        return false, 0, 0;
+
+    return true, pen_x, pen_y;
+}
+
 RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 {
     glyph, new := find_or_add (*glyphs, codepoint);
@@ -244,14 +267,14 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 
     slot := font.ft_face.glyph;
 
-    // @Todo: it seems to me that the criterias for selecting an atlas are wrong
-
     // Find an atlas to blit the glyph into
+    glyph_x, glyph_y : s32;
     atlas : *GlyphAtlas;
     for * atlases
     {
-        if it.pen_x + xx glyph.bitmap_width <= xx it.width
-        && it.pen_y + xx glyph.bitmap_height <= xx it.height
+        fit:, glyph_x, glyph_y = FitRectIntoAtlas (it, xx glyph.bitmap_width, xx glyph.bitmap_height);
+
+        if fit
         {
             atlas = it;
 
@@ -260,15 +283,18 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
     }
 
     if !atlas
-        atlas = AddGlyphAtlas (page);
-
-    if atlas.pen_x + xx glyph.bitmap_width > xx atlas.width
-    || atlas.pen_y + xx glyph.bitmap_height > xx atlas.height
     {
-        atlas.pen_x = 0;
-        atlas.pen_y = atlas.row_end;
-        atlas.row_end += xx glyph.bitmap_height;
+        atlas = AddGlyphAtlas (page,
+            max (cast (s32) glyph.bitmap_width, Default_Glyph_Atlas_Width),
+            max (cast (s32) glyph.bitmap_height, Default_Glyph_Atlas_Height)
+        );
     }
+
+    assert (FitRectIntoAtlas (atlas, xx glyph.bitmap_width, xx glyph.bitmap_height));
+
+    atlas.pen_x = glyph_x + xx glyph.bitmap_width;
+    atlas.pen_y = glyph_y;
+    atlas.row_end = max (atlas.row_end, atlas.pen_y + xx glyph.bitmap_height);
 
     if glyph.bitmap_width > 0 && glyph.bitmap_height > 0
     {
@@ -294,18 +320,14 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
     }
 
     glyph.uv_rect = .{
-        atlas.pen_x / cast (float) atlas.width,
-        (atlas.pen_y + xx glyph.bitmap_height) / cast (float) atlas.height,
+        glyph_x / cast (float) atlas.width,
+        (glyph_y + xx glyph.bitmap_height) / cast (float) atlas.height,
         glyph.bitmap_width / cast (float) atlas.width,
         -(glyph.bitmap_height / cast (float) atlas.height)
     };
 
     glyph.atlas_texture = atlas.texture;
     glyph.rendered = true;
-
-    atlas.pen_x += xx glyph.bitmap_width;
-    if atlas.pen_y + xx glyph.bitmap_height > atlas.row_end
-        atlas.row_end = atlas.pen_y + xx glyph.bitmap_height;
 
     return glyph;
 }

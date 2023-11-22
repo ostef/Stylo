@@ -26,7 +26,7 @@
 Math :: #import "Math";
 
 #load "math.jai";
-//#load "font.jai";
+#load "font.jai";
 #load "gl.jai";
 
 #if Math_Types == MathTypes
