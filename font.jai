@@ -157,6 +157,21 @@ LoadFontFromFile :: (filename : string) -> *Font #must
     return font;
 }
 
+DestroyFont :: (using font : *Font)
+{
+    for * pages
+        DestroyFontPage (it);
+
+    deinit (*pages);
+    FT_Done_Face (ft_face);
+}
+
+DestroyAndFreeFont :: inline (font : *Font)
+{
+    DestroyFont (font);
+    free (font);
+}
+
 LoadFontPage :: (using font : *Font, height : u32) -> *FontPage
 {
     page, new := find_or_add (*pages, height);
@@ -177,6 +192,25 @@ LoadFontPage :: (using font : *Font, height : u32) -> *FontPage
     page.space_advance = xx (space_glyph.advance);
 
     return page;
+}
+
+DestroyFontPage :: inline (using font : *Font, height : u32)
+{
+    page := table_find_pointer (*pages, height);
+    if !page
+        return;
+
+    inline DestroyFontPage (page);
+}
+
+DestroyFontPage :: (using page : *FontPage)
+{
+    for * atlases
+        DestroyTexture (*it.texture);
+
+    array_reset (*atlases);
+    deinit (*glyphs);
+    table_remove (*font.pages, height);
 }
 
 AddGlyphAtlas :: (using page : *FontPage, atlas_width := Default_Glyph_Atlas_Width, atlas_height := Default_Glyph_Atlas_Height) -> *GlyphAtlas

@@ -203,6 +203,11 @@ CreateTexture :: (width : u32, height : u32, data : *void) -> TextureHandle #mus
     return cast (TextureHandle) result;
 }
 
+DestroyTexture :: inline (texture : *TextureHandle)
+{
+    glDeleteTextures (1, texture);
+}
+
 BlitToTexture :: (texture : TextureHandle, x : s32, y : s32, width : u32, height : u32, data : *void)
 {
     #import "GL";
