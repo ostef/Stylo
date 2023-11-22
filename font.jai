@@ -2,7 +2,6 @@
 #import "freetype-2.12.1";
 
 // @Todo: make a for_expansion to traverse text as glyphs
-// @Todo: API to remove font pages
 
 // How fonts work in Stylo:
 // We have a Font struct, that has a FreeType Face, and what we call
@@ -16,8 +15,9 @@
 // glyph on top of that.
 // For now, the number of glyphs allocated and rendered throughout
 // the lifetime of a font page can only go up. This might not be optimal,
-// so we might want to change that in the future.
-// The same thing goes for font pages, which cannot be destroyed.
+// so we might want to change that in the future (although that would require
+// more house-keeping, which will have an effect of performance and memory
+// usage). You can, however, destroy a font page.
 //
 //                                                   ostef, 21 November 2023
 
