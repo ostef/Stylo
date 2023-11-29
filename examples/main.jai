@@ -95,7 +95,8 @@ main :: ()
 
         Stylo.PushCircle (
             .{width * 0.5, height * 0.5},
-            100
+            100,
+            color = .{0.7,0.4,0.2,1.0}
         );
 
         Stylo.GLRenderDrawLists (width, height);
