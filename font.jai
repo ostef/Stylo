@@ -363,8 +363,8 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
             for x : 0..glyph.bitmap_width - 1
             {
                 index := x + y * glyph.bitmap_width;
-                val := cast (u32) slot.bitmap.buffer[index];
-                rgba_bitmap[index] = (val << 0) | (val << 8) | (val << 16) | (val << 24);
+                alpha := cast (u32) slot.bitmap.buffer[index];
+                rgba_bitmap[index] = 0x00ffffff | (alpha << 24);
             }
         }
 
