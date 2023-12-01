@@ -8,11 +8,8 @@ Win32 :: #import "Win32" (
 );
 
 #import "GL";
-Stylo :: #import, file "../module.jai" (
-    Origin_Top_Left = false,
-    Default_Glyph_Atlas_Width = 128,
-    Default_Glyph_Atlas_Height = 128,
-);
+
+Stylo :: #import, file "../module.jai";
 
 g_quit := false;
 
@@ -92,6 +89,8 @@ main :: ()
             Win32.DispatchMessageW (*msg);
         }
 
+        time := cast (float) to_float64_seconds (current_time_monotonic ());
+
         viewport_rect : Win32.RECT;
         Win32.GetClientRect (hwnd, *viewport_rect);
 
@@ -114,7 +113,15 @@ main :: ()
             color = .{0.6,0.2,0.7,1.0}
         );
 
-        Stylo.PushText ("Hello Sailor!", 22, .{50, 50});
+        rect : Stylo.Rect;
+        rect.x = 10;
+        rect.w = 300 + cos (time * 0.5) * 50;
+        rect.h = 300 + sin (time * 0.5) * 50;
+        rect.y = height - 10.0 - rect.h;
+
+        Stylo.PushRect (rect, color = .{0.0581, 0.791, 0.830, 1});
+        Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap);
+
         Stylo.GLRenderDrawLists (width, height);
 
         Win32.SwapBuffers (hdc);
@@ -169,3 +176,7 @@ Utf8ToWide :: (utf8_str : string, allocator := context.allocator) -> wide_str : 
 
     return null, 0;
 }
+
+Lorem_Ipsum :: #string END
+Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
+END
