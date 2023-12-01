@@ -422,24 +422,27 @@ CalculateTextExtents :: (text : string, rect : Rect, overflow : OverflowBehavior
     return .{width, pen.y - page.descent};
 }
 
-PushText :: (
+PushText :: inline (
     text : string,
     height : u32,
     position : Vec2f,
     color := Vec4f.{1,1,1,1},
+    align := Vec2f.{0,0},
     font : *Font = null
 ) -> Rect
 {
-    return PushFormattedText (
+    return PushText (
         text,
         height,
         .{position.x, position.y, 0, 0},
         color,
-        font = font
+        align,
+        OverflowBehavior.None,
+        font
     );
 }
 
-PushFormattedText :: (
+PushText :: (
     text : string,
     height : u32,
     rect : Rect,
