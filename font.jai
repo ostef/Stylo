@@ -109,20 +109,20 @@ OverflowBehavior :: enum
     Wrap_Word; // @Todo
 }
 
-#add_context stylo_font : *Font;
 
-GetFont :: inline () -> *Font #must
+GetDefaultFont :: inline () -> *Font #must
 {
-    return context.stylo_font;
+    return g_default_font;
 }
 
-SetFont :: inline (font : *Font)
+SetDefaultFont :: inline (font : *Font)
 {
-    context.stylo_font = font;
+    g_default_font = font;
 }
 
 #scope_file
 
+g_default_font : *Font;
 g_ft_lib : FT_Library;
 
 InitFonts :: () -> bool
@@ -369,7 +369,10 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 CalculateTextExtents :: inline (text : string, height : u32, rect : Rect, overflow : OverflowBehavior, font : *Font = null) -> Vec2f #must
 {
     if !font
-        font = context.stylo_font;
+    {
+        assert (g_default_font != null);
+        font = g_default_font;
+    }
 
     page := LoadFontPage (font, height);
 
@@ -430,7 +433,10 @@ PushFormattedText :: (
 ) -> Rect
 {
     if !font
-        font = context.stylo_font;
+    {
+        assert (g_default_font != null);
+        font = g_default_font;
+    }
 
     prev_texture := GetTexture ();
     defer SetTexture (prev_texture);
