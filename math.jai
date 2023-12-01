@@ -40,6 +40,11 @@ TruncateRect :: inline (rect : Rect, left : float, top : float, right : float, b
     return result;
 }
 
+TruncateRect :: inline (rect : Rect, amount : float) -> Rect #must
+{
+    return TruncateRect (rect, amount, amount, amount, amount);
+}
+
 Round :: (value : float) -> float #must #expand
 {
     if value < 0
