@@ -111,7 +111,6 @@ GlyphAtlas :: struct
 OverflowBehavior :: enum
 {
     None;
-    Clip;   // @Todo
     Wrap;
     Wrap_Word; // @Todo
 }
@@ -517,7 +516,7 @@ PushText :: (
         case;
             glyph := RenderGlyph (page, codepoint);
 
-            if overflow == .Wrap && pen.x + glyph.bitmap_left > rect.w
+            if overflow == .Wrap && pen.x + glyph.bitmap_left + glyph.bitmap_width > rect.w
             {
                 pen.x = 0;
                 pen.y += page.ascent - page.descent;
