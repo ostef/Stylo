@@ -70,8 +70,6 @@ Font :: struct
     pages : Table (u32, FontPage);
 }
 
-// @Todo: optimize for ASCII/Latin
-
 FontPage :: struct
 {
     font : *Font;
@@ -516,7 +514,7 @@ PushText :: (
         case;
             glyph := RenderGlyph (page, codepoint);
 
-            if overflow == .Wrap && pen.x + glyph.bitmap_left + glyph.bitmap_width > rect.w
+            if overflow == .Wrap && pen.x + glyph.advance > rect.w
             {
                 pen.x = 0;
                 pen.y += page.ascent - page.descent;
