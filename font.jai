@@ -106,6 +106,13 @@ ByWord :: (str : Utf8String, body : Code, flags : For_Flags) #expand
             it.spaces = space;
         }
     }
+
+    if it.start_byte_index != it.end_byte_index
+    {
+        it.str.data = str.data + it.start_byte_index;
+        it.str.count = it.end_byte_index - it.start_byte_index;
+        #insert body;
+    }
 }
 
 Font :: struct
@@ -447,6 +454,7 @@ WordWrap :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #expand
     original_text := iter.text;
     defer iter.text = original_text;
 
+    `it : *Glyph;
     `it_index := 0;
     for :ByWord word, word_index : MakeUtf8String (iter.text)
     {
@@ -467,10 +475,11 @@ WordWrap :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #expand
         }
 
         iter.text = word.str;
-        for `it, char_index : iter
+        for glyph, char_index : iter
         {
             defer it_index += 1;
 
+            it = glyph;
             #insert body;
         }
     }
