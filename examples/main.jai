@@ -8,7 +8,11 @@ Win32 :: #import "Win32" (
 );
 
 #import "GL";
-Stylo :: #import, file "../module.jai";
+Stylo :: #import, file "../module.jai" (
+    Origin_Top_Left = false,
+    Default_Glyph_Atlas_Width = 128,
+    Default_Glyph_Atlas_Height = 128,
+);
 
 g_quit := false;
 
@@ -75,6 +79,10 @@ main :: ()
 
     assert (glGenVertexArrays != null, "Could not load GL functions");
 
+    font := Stylo.LoadFontFromFile ("Roboto-Regular.ttf");
+    assert (font != null);
+    Stylo.SetDefaultFont (font);
+
     while !g_quit
     {
         msg : Win32.MSG;
@@ -84,14 +92,15 @@ main :: ()
             Win32.DispatchMessageW (*msg);
         }
 
-        glClearColor (0.2, 0.4, 0.8, 1.0);
-        glClear (GL_COLOR_BUFFER_BIT);
-
         viewport_rect : Win32.RECT;
         Win32.GetClientRect (hwnd, *viewport_rect);
 
         width := viewport_rect.right - viewport_rect.left;
         height := viewport_rect.bottom - viewport_rect.top;
+
+        glViewport (0, 0, xx width, xx height);
+        glClearColor (0.2, 0.4, 0.8, 1.0);
+        glClear (GL_COLOR_BUFFER_BIT);
 
         Stylo.PushCircle (
             .{width * 0.5, height * 0.5},
@@ -99,6 +108,7 @@ main :: ()
             color = .{0.7,0.4,0.2,1.0}
         );
 
+        Stylo.PushText ("Hello Sailor!", 22, .{50, 50});
         Stylo.GLRenderDrawLists (width, height);
 
         Win32.SwapBuffers (hdc);

@@ -347,7 +347,7 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 
         BlitToTexture (
             atlas.texture,
-            atlas.pen_x, atlas.pen_y,
+            glyph_x, glyph_y,
             glyph.bitmap_width, glyph.bitmap_height,
             rgba_bitmap
         );
@@ -420,6 +420,23 @@ CalculateTextExtents :: (text : string, rect : Rect, overflow : OverflowBehavior
     }
 
     return .{width, pen.y - page.descent};
+}
+
+PushText :: (
+    text : string,
+    height : u32,
+    position : Vec2f,
+    color := Vec4f.{1,1,1,1},
+    font : *Font = null
+) -> Rect
+{
+    return PushFormattedText (
+        text,
+        height,
+        .{position.x, position.y, 0, 0},
+        color,
+        font = font
+    );
 }
 
 PushFormattedText :: (
