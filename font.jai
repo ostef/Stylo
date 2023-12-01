@@ -431,63 +431,6 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
     return glyph;
 }
 
-CalculateTextExtents :: inline (text : string, height : u32, rect : Rect, overflow : OverflowBehavior, font : *Font = null) -> Vec2f #must
-{
-    if !font
-    {
-        assert (g_default_font != null);
-        font = g_default_font;
-    }
-
-    page := LoadFontPage (font, height);
-
-    return CalculateTextExtents (text, rect, overflow, page);
-}
-
-CalculateTextExtents :: (text : string, rect : Rect, overflow : OverflowBehavior, page : *FontPage) -> Vec2f #must
-{
-    pen := Vec2f.{0, cast (float) page.ascent};
-    width : float;
-
-    for codepoint, i : MakeUtf8String (text)
-    {
-        if codepoint ==
-        {
-        case #char "\n";
-            width = max (width, pen.x);
-            pen.x = 0;
-            pen.y += page.ascent - page.descent;
-
-        case #char "\t";
-            glyph := LoadGlyph (page, codepoint);
-            pen.x = SnapUp (pen.x + glyph.advance, page.space_advance * 4.0);
-
-            if overflow == .Wrap && pen.x > rect.w
-            {
-                pen.x = 0;
-                pen.y += page.ascent - page.descent;
-            }
-
-            width = max (width, pen.x);
-
-        case;
-            glyph := LoadGlyph (page, codepoint);
-
-            if overflow == .Wrap && pen.x + glyph.bitmap_left > rect.w
-            {
-                pen.x = 0;
-                pen.y += page.ascent - page.descent;
-            }
-
-            pen.x += glyph.advance;
-            width = max (width, pen.x);
-        }
-    }
-
-    return .{width, pen.y - page.descent};
-}
-
-
 TextGlyphIterator :: struct
 {
     page : *FontPage;
@@ -496,6 +439,7 @@ TextGlyphIterator :: struct
     bounds : Vec2f;
     width : float;
     allow_overflow : bool;
+    render_glyphs := true;
 }
 
 WordWrap :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #expand
@@ -556,7 +500,11 @@ for_expansion :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #ex
             iter.width = max (iter.width, iter.pen.x);
 
         case;
-            glyph := RenderGlyph (iter.page, codepoint);
+            glyph : *Glyph = ---;
+            if iter.render_glyphs
+                glyph = RenderGlyph (iter.page, codepoint);
+            else
+                glyph = LoadGlyph (iter.page, codepoint);
 
             if !iter.allow_overflow && iter.pen.x + glyph.advance > iter.bounds.x
             {
@@ -571,6 +519,40 @@ for_expansion :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #ex
             iter.width = max (iter.width, iter.pen.x);
         }
     }
+}
+
+CalculateTextExtents :: inline (text : string, height : u32, rect : Rect, overflow : OverflowBehavior, font : *Font = null) -> Vec2f #must
+{
+    if !font
+    {
+        assert (g_default_font != null);
+        font = g_default_font;
+    }
+
+    page := LoadFontPage (font, height);
+
+    return CalculateTextExtents (text, rect, overflow, page);
+}
+
+CalculateTextExtents :: (text : string, rect : Rect, overflow : OverflowBehavior, page : *FontPage) -> Vec2f #must
+{
+    iter : TextGlyphIterator;
+    iter.text = text;
+    iter.page = page;
+    iter.pen = Vec2f.{0, cast (float) iter.page.ascent};
+    iter.bounds = rect.size;
+    iter.allow_overflow = overflow == .None;
+
+    if overflow == .Wrap_Word
+    {
+        for :WordWrap glyph, i : iter {}
+    }
+    else
+    {
+        for glyph, i : iter {}
+    }
+
+    return .{iter.width, iter.pen.y - iter.page.descent};
 }
 
 PushText :: inline (
