@@ -1,6 +1,9 @@
 #import "Hash_Table";
 #import "freetype-2.12.1";
+Unicode :: #import "Unicode";
 
+// @Todo: test performance of ASCII optimization
+// @Todo: test performance of glyph blitting (I've heard glTexSubImage2D can be slow)
 // @Todo: make a for_expansion to traverse text as glyphs
 
 // How fonts work in Stylo:
@@ -46,8 +49,6 @@ MakeUtf8String :: inline (count : s64, data : *u8) -> Utf8String #must
 
 for_expansion :: (str : Utf8String, body : Code, flags : For_Flags) #expand
 {
-    Unicode :: #import "Unicode";
-
     `it_index := 0;
     byte_index := 0;
     while byte_index < str.count
@@ -60,6 +61,50 @@ for_expansion :: (str : Utf8String, body : Code, flags : For_Flags) #expand
         }
 
         #insert body;
+    }
+}
+
+#scope_file
+
+Word :: struct
+{
+    start_byte_index, end_byte_index : s64;
+    str : string;
+    length : s64;
+    spaces : bool;
+}
+
+#scope_export
+
+// for_expansion
+ByWord :: (str : Utf8String, body : Code, flags : For_Flags) #expand
+{
+    `it : Word;
+    `it_index := 0;
+    if str.count != 0
+        it.spaces == is_space (str.data[0]);
+
+    while it.end_byte_index < str.count
+    {
+        codepoint, codepoint_len := Unicode.character_utf8_to_utf32 (str.data + it.end_byte_index, str.count - it.end_byte_index);
+
+        defer {
+            it.end_byte_index += codepoint_len;
+            it.length += 1;
+            it_index += 1;
+        }
+
+        space := codepoint < 128 && is_space (xx codepoint);
+        if it.spaces != space
+        {
+            it.str.data = str.data + it.start_byte_index;
+            it.str.count = it.end_byte_index - it.start_byte_index;
+            #insert body;
+
+            it.start_byte_index = it.end_byte_index;
+            it.length = 0;
+            it.spaces = space;
+        }
     }
 }
 
@@ -110,7 +155,7 @@ OverflowBehavior :: enum
 {
     None;
     Wrap;
-    Wrap_Word; // @Todo
+    Wrap_Word;
 }
 
 GetDefaultFont :: inline () -> *Font #must
@@ -442,6 +487,92 @@ CalculateTextExtents :: (text : string, rect : Rect, overflow : OverflowBehavior
     return .{width, pen.y - page.descent};
 }
 
+
+TextGlyphIterator :: struct
+{
+    page : *FontPage;
+    text : string;
+    pen : Vec2f;
+    bounds : Vec2f;
+    width : float;
+    allow_overflow : bool;
+}
+
+WordWrap :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #expand
+{
+    original_text := iter.text;
+    defer iter.text = original_text;
+
+    `it_index := 0;
+    for :ByWord word, word_index : MakeUtf8String (iter.text)
+    {
+        if !word.spaces
+        {
+            word_text_length := 0.0;
+            for MakeUtf8String (word.str)
+            {
+                glyph := LoadGlyph (iter.page, it);
+                word_text_length += glyph.advance;
+            }
+;
+            if word_text_length < iter.bounds.x && iter.pen.x + word_text_length > iter.bounds.x
+            {
+                iter.pen.x = 0;
+                iter.pen.y += iter.page.ascent - iter.page.descent;
+            }
+        }
+
+        iter.text = word.str;
+        for `it, char_index : iter
+        {
+            defer it_index += 1;
+
+            #insert body;
+        }
+    }
+}
+
+for_expansion :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #expand
+{
+    for codepoint, `it_index : MakeUtf8String (iter.text)
+    {
+        if codepoint ==
+        {
+        case #char "\n";
+            iter.width = max (iter.width, iter.pen.x);
+            iter.pen.x = 0;
+            iter.pen.y += iter.page.ascent - iter.page.descent;
+
+        case #char "\t";
+            glyph := LoadGlyph (iter.page, codepoint);
+            iter.pen.x = SnapUp (iter.pen.x + glyph.advance, iter.page.space_advance * 4.0);
+
+            if !iter.allow_overflow && iter.pen.x > iter.bounds.x
+            {
+                iter.pen.x = 0;
+                iter.pen.y += iter.page.ascent - iter.page.descent;
+            }
+
+            iter.width = max (iter.width, iter.pen.x);
+
+        case;
+            glyph := RenderGlyph (iter.page, codepoint);
+
+            if !iter.allow_overflow && iter.pen.x + glyph.advance > iter.bounds.x
+            {
+                iter.pen.x = 0;
+                iter.pen.y += iter.page.ascent - iter.page.descent;
+            }
+
+            `it := glyph;
+            #insert body;
+
+            iter.pen.x += glyph.advance;
+            iter.width = max (iter.width, iter.pen.x);
+        }
+    }
+}
+
 PushText :: inline (
     text : string,
     height : u32,
@@ -481,77 +612,64 @@ PushText :: (
     prev_texture := GetTexture ();
     defer SetTexture (prev_texture);
 
-    page := LoadFontPage (font, height);
-    pen := Vec2f.{0, cast (float) page.ascent};
-    width : float;
-    size := CalculateTextExtents (text, rect, overflow, page);
+    iter : TextGlyphIterator;
+    iter.text = text;
+    iter.page = LoadFontPage (font, height);
+    iter.pen = Vec2f.{0, cast (float) iter.page.ascent};
+    iter.bounds = rect.size;
+    iter.allow_overflow = overflow == .None;
+
+    size := CalculateTextExtents (text, rect, overflow, iter.page);
     offset := Vec2f.{
         rect.w * align.x - size.x * align.x,
         rect.h * align.y - size.y * align.y
     };
 
-    for codepoint, i : MakeUtf8String (text)
+    PushGlyph :: () #expand
     {
-        if codepoint ==
+        #if Origin_Top_Left
         {
-        case #char "\n";
-            width = max (width, pen.x);
-            pen.x = 0;
-            pen.y += page.ascent - page.descent;
+            glyph_rect := Rect.{
+                Round (`rect.x + `offset.x) + `iter.pen.x + `glyph.bitmap_left,
+                Round (`rect.y + `offset.y) + `iter.pen.y - `glyph.bitmap_top,
+                xx `glyph.bitmap_width,
+                xx `glyph.bitmap_height
+            };
+        }
+        else
+        {
+            glyph_rect := Rect.{
+                Round (`rect.x + `offset.x) + `iter.pen.x + `glyph.bitmap_left,
+                Round (`rect.y + `rect.h - `offset.y) - `iter.pen.y + `glyph.bitmap_top - `glyph.bitmap_height,
+                xx `glyph.bitmap_width,
+                xx `glyph.bitmap_height
+            };
+        }
 
-        case #char "\t";
-            glyph := LoadGlyph (page, codepoint);
-            pen.x = SnapUp (pen.x + glyph.advance, page.space_advance * 4.0);
+        SetTexture (`glyph.atlas_texture);
 
-            if overflow == .Wrap && pen.x > rect.w
-            {
-                pen.x = 0;
-                pen.y += page.ascent - page.descent;
-            }
+        uv_rect := `glyph.uv_rect;
+        #if Origin_Top_Left
+        {
+            uv_rect.h = -uv_rect.h;
+            uv_rect.y -= uv_rect.h;
+        }
 
-            width = max (width, pen.x);
+        PushRect (glyph_rect, `color, uv_rect);
+    }
 
-        case;
-            glyph := RenderGlyph (page, codepoint);
-
-            if overflow == .Wrap && pen.x + glyph.advance > rect.w
-            {
-                pen.x = 0;
-                pen.y += page.ascent - page.descent;
-            }
-
-            #if Origin_Top_Left
-            {
-                glyph_rect := Rect.{
-                    Round (rect.x + offset.x) + pen.x + glyph.bitmap_left,
-                    Round (rect.y + offset.y) + pen.y - glyph.bitmap_top,
-                    xx glyph.bitmap_width,
-                    xx glyph.bitmap_height
-                };
-            }
-            else
-            {
-                glyph_rect := Rect.{
-                    Round (rect.x + offset.x) + pen.x + glyph.bitmap_left,
-                    Round (rect.y + rect.h - offset.y) - pen.y + glyph.bitmap_top - glyph.bitmap_height,
-                    xx glyph.bitmap_width,
-                    xx glyph.bitmap_height
-                };
-            }
-
-            pen.x += glyph.advance;
-            width = max (width, pen.x);
-
-            SetTexture (glyph.atlas_texture);
-
-            uv_rect := glyph.uv_rect;
-            #if Origin_Top_Left
-            {
-                uv_rect.h = -uv_rect.h;
-                uv_rect.y -= uv_rect.h;
-            }
-
-            PushRect (glyph_rect, color, uv_rect);
+    if overflow == .Wrap_Word
+    {
+        for :WordWrap glyph, i : iter
+        {
+            PushGlyph ();
+        }
+    }
+    else
+    {
+        for glyph, i : iter
+        {
+            PushGlyph ();
         }
     }
 

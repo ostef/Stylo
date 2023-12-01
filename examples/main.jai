@@ -120,7 +120,7 @@ main :: ()
         rect.y = height - 10.0 - rect.h;
 
         Stylo.PushRect (rect, color = .{0.0581, 0.791, 0.830, 1});
-        Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap);
+        Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap_Word);
 
         Stylo.GLRenderDrawLists (width, height);
 
@@ -178,5 +178,6 @@ Utf8ToWide :: (utf8_str : string, allocator := context.allocator) -> wide_str : 
 }
 
 Lorem_Ipsum :: #string END
+LONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORDLONGWORD
 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
 END
