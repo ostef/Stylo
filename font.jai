@@ -21,6 +21,10 @@
 //
 //                                                   ostef, 21 November 2023
 
+// This is here so we can test the performance of this optimization.
+// It will go away eventually.
+Enable_ASCII_Glyph_Array :: true;
+
 Utf8String :: struct
 {
     count : s64;
@@ -76,6 +80,9 @@ FontPage :: struct
     glyphs : Table (u32, Glyph);
     ascent, descent : s32;
     space_advance : u32;    // Advance of the space glyph
+
+    #if Enable_ASCII_Glyph_Array
+        ascii_glyphs : [128]Glyph;
 }
 
 Glyph :: struct
@@ -108,7 +115,6 @@ OverflowBehavior :: enum
     Wrap;
     Wrap_Word; // @Todo
 }
-
 
 GetDefaultFont :: inline () -> *Font #must
 {
@@ -240,11 +246,28 @@ SetGlyphMetrics :: (glyph : *Glyph, slot : *FT_GlyphSlotRec)
     glyph.bitmap_top = xx slot.bitmap_top;
 }
 
+FindOrAddGlyph :: inline (using page : *FontPage, codepoint : u32) -> *Glyph #must, new : bool
+{
+    #if Enable_ASCII_Glyph_Array
+    {
+        if codepoint < 128
+        {
+            glyph := *ascii_glyphs[codepoint];
+
+            return glyph, codepoint != 0 && glyph.codepoint != codepoint;
+        }
+    }
+
+    glyph, new := find_or_add (*glyphs, codepoint);
+
+    return glyph, new;
+}
+
 #scope_export
 
 LoadGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 {
-    glyph, new := find_or_add (*glyphs, codepoint);
+    glyph, new := FindOrAddGlyph (page, codepoint);
     if !new
         return glyph;
 
@@ -284,7 +307,7 @@ FitRectIntoAtlas :: (atlas : GlyphAtlas, width : s32, height : s32) -> bool #mus
 
 RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 {
-    glyph, new := find_or_add (*glyphs, codepoint);
+    glyph, new := FindOrAddGlyph (page, codepoint);
     if !new && glyph.rendered
         return glyph;
 

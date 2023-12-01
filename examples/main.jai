@@ -108,6 +108,12 @@ main :: ()
             color = .{0.7,0.4,0.2,1.0}
         );
 
+        Stylo.PushRoundedRect (
+            .{300,300,100,100},
+            25,
+            color = .{0.6,0.2,0.7,1.0}
+        );
+
         Stylo.PushText ("Hello Sailor!", 22, .{50, 50});
         Stylo.GLRenderDrawLists (width, height);
 
