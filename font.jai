@@ -591,7 +591,8 @@ PushText :: (
     color := Vec4f.{1,1,1,1},
     align := Vec2f.{0,0},
     overflow := OverflowBehavior.None,
-    font : *Font = null
+    font : *Font = null,
+    lists : *DrawCommandLists = null
 ) -> Rect
 {
     if !font
@@ -600,8 +601,8 @@ PushText :: (
         font = g_default_font;
     }
 
-    prev_texture := GetTexture ();
-    defer SetTexture (prev_texture);
+    prev_texture := GetTexture (lists);
+    defer SetTexture (prev_texture, lists);
 
     iter : TextGlyphIterator;
     iter.text = text;
@@ -637,7 +638,7 @@ PushText :: (
             };
         }
 
-        SetTexture (`glyph.atlas_texture);
+        SetTexture (`glyph.atlas_texture, `lists);
 
         uv_rect := `glyph.uv_rect;
         #if Origin_Top_Left
@@ -646,7 +647,7 @@ PushText :: (
             uv_rect.y -= uv_rect.h;
         }
 
-        PushRect (glyph_rect, `color, uv_rect);
+        PushRect (glyph_rect, `color, uv_rect, lists = `lists);
     }
 
     if overflow == .Wrap_Word

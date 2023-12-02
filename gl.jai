@@ -70,7 +70,7 @@ SetShaderParam :: inline (param : ShaderParam)
     }
 }
 
-GLRenderDrawLists :: (width : s32, height : s32)
+GLRenderDrawLists :: (lists : *DrawCommandLists, width : s32, height : s32)
 {
     #import "GL";
     GL_Utils :: #import,file "GL_Utils.jai";
@@ -122,7 +122,6 @@ GLRenderDrawLists :: (width : s32, height : s32)
 
     glActiveTexture (GL_TEXTURE0);
 
-    prev_shader : GLuint = 0;
     loc_use_texture : GLint;
 
     #if Origin_Top_Left
@@ -130,25 +129,18 @@ GLRenderDrawLists :: (width : s32, height : s32)
     else
         view_projection_matrix := MakeOrthograpicProjection (0, xx width, 0, xx height, 0, 1);
 
-    list := g_first_draw_list;
-    while list
+    for lists.first
     {
-        next := list.next;
+        glBufferSubData (GL_ARRAY_BUFFER, 0, size_of (Vertex) * it.vertex_count, it.vertices.data);
 
-        glBufferSubData (GL_ARRAY_BUFFER, 0, size_of (Vertex) * list.vertex_count, list.vertices.data);
-
-        for cmd_i : 0..list.command_count - 1
+        for :AllCommands draw_cmd, cmd_i : it
         {
-            cmd := list.commands[cmd_i];
-
-            if cmd.vertex_count == 0
-                continue;
-
-            if !cmd.shader
-                continue;
-
-            if cmd.shader != prev_shader
+            if #complete draw_cmd.kind ==
             {
+            case .Invalid;
+            case .Set_Shader;
+                cmd := cast (*SetShaderCommand) draw_cmd;
+
                 glUseProgram (cmd.shader);
 
                 loc_view_proj := glGetUniformLocation (cmd.shader, "u_View_Projection_Matrix");
@@ -160,26 +152,31 @@ GLRenderDrawLists :: (width : s32, height : s32)
                 glUniform2f (loc_viewport_size, cast (float) width, cast (float) height);
                 glUniform1i (loc_texture, 0);
 
-                prev_shader = cmd.shader;
+            case .Set_Shader_Params;
+                cmd := cast (*SetShaderParamsCommand) draw_cmd;
+
+                for i : 0..cmd.param_count - 1
+                {
+                    SetShaderParam (cmd.params[i]);
+                }
+
+            case .Set_Texture;
+                cmd := cast (*SetTextureCommand) draw_cmd;
+
+                glUniform1i (loc_use_texture, cast (s32) (cmd.texture != 0));
+                glBindTexture (GL_TEXTURE_2D, cmd.texture);
+
+            case .Draw_Vertices;
+                cmd := cast (*DrawVerticesCommand) draw_cmd;
+                glDrawArrays (GL_TRIANGLES, cmd.offset, cast (u32) cmd.count);
             }
-
-            for i : 0..cmd.shader_param_count - 1
-            {
-                SetShaderParam (cmd.shader_params[i]);
-            }
-
-            glUniform1i (loc_use_texture, cast (s32) (cmd.texture != 0));
-            glBindTexture (GL_TEXTURE_2D, cmd.texture);
-
-            glDrawArrays (GL_TRIANGLES, cmd.vertex_offset, cast (u32) cmd.vertex_count);
         }
 
-        free (list);
-        list = next;
+        free (it);
     }
 
-    g_first_draw_list = null;
-    g_current_draw_list = null;
+    lists.first = null;
+    lists.last = null;
 }
 
 CreateTexture :: (width : u32, height : u32, data : *void) -> TextureHandle #must
