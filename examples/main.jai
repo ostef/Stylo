@@ -122,7 +122,7 @@ main :: ()
         Stylo.PushRect (rect, color = .{0.0581, 0.791, 0.830, 1});
         Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap_Word);
 
-        Stylo.GLRenderDrawLists (Stylo.GetGlobalCommandLists (), width, height);
+        Stylo.GLRenderCommandLists (Stylo.GetGlobalCommandLists (), width, height);
 
         Win32.SwapBuffers (hdc);
     }

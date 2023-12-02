@@ -70,7 +70,7 @@ SetShaderParam :: inline (param : ShaderParam)
     }
 }
 
-GLRenderDrawLists :: (lists : *DrawCommandLists, width : s32, height : s32)
+GLRenderCommandLists :: (lists : *DrawCommandLists, width : s32, height : s32)
 {
     #import "GL";
     GL_Utils :: #import,file "GL_Utils.jai";
