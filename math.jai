@@ -21,7 +21,7 @@ RectMinMax :: inline (using rect : Rect) -> min : Vec2f, max : Vec2f
     return .{x, y}, .{x + w, y + h};
 }
 
-TruncateRect :: inline (rect : *Rect, left : float, top : float, right : float, bottom : float)
+TruncateRect :: inline (rect : *Rect, left : float = 0, top : float = 0, right : float = 0, bottom : float = 0)
 {
     rect.x += left;
     rect.w -= left;
@@ -32,7 +32,7 @@ TruncateRect :: inline (rect : *Rect, left : float, top : float, right : float, 
     rect.h -= bottom;
 }
 
-TruncateRect :: inline (rect : Rect, left : float, top : float, right : float, bottom : float) -> Rect #must
+TruncateRect :: inline (rect : Rect, left : float = 0, top : float = 0, right : float = 0, bottom : float = 0) -> Rect #must
 {
     result := rect;
     TruncateRect (*result, left, top, right, bottom);
