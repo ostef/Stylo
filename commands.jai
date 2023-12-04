@@ -285,7 +285,7 @@ PushVertices :: (count : s32, lists : *DrawCommandLists = null) -> *Vertex #must
     if !lists
         lists = *g_draw_lists;
 
-    if !CanPushVertices (lists.last, count)
+    if !CanPushVertices (lists.last, count) || !CanPushCommand (lists.last, size_of (DrawVerticesCommand))
     {
         PushCommandList (lists);
     }
