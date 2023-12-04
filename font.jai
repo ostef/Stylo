@@ -4,7 +4,6 @@ Unicode :: #import "Unicode";
 
 // @Todo: test performance of ASCII optimization
 // @Todo: test performance of glyph blitting (I've heard glTexSubImage2D can be slow)
-// @Todo: make a for_expansion to traverse text as glyphs
 
 // How fonts work in Stylo:
 // We have a Font struct, that has a FreeType Face, and what we call

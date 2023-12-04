@@ -64,8 +64,6 @@ Vertex :: struct
 
 TextureHandle :: u32;
 
-// @Todo: put this into the context for thread safety, handle threads
-
 LoadTexture :: (filename : string) -> TextureHandle #must
 {
     #import "stb_image";
