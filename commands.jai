@@ -117,7 +117,7 @@ PushCommandList :: inline (lists : *DrawCommandLists)
     lists.last = result;
 
     if first
-        SetShader (GetDefaultShader ());
+        SetShader (GetDefaultShader (), lists);
 }
 
 PushCommand :: (list : *DrawCommandList, $T : Type) -> *T #must
