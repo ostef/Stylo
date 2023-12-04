@@ -10,6 +10,8 @@ DrawCommandList :: struct
 
     current_texture : TextureHandle;
     current_shader : ShaderHandle;
+    current_clipping_state : bool;
+    current_clip_rect : Recti;
 
     command_count : s32;
     last_command_offset : s32;
@@ -29,6 +31,7 @@ DrawCommand :: struct
         Set_Shader;
         Set_Shader_Params;
         Set_Texture;
+        Set_Clipping;
         Draw_Vertices;
     }
 
@@ -60,6 +63,15 @@ SetTextureCommand :: struct
     base.kind = .Set_Texture;
 
     texture : TextureHandle;
+}
+
+SetClippingCommand :: struct
+{
+    #as using base : DrawCommand;
+    base.kind = .Set_Clipping;
+
+    enabled : bool;
+    rect : Recti;
 }
 
 DrawVerticesCommand :: struct
@@ -109,6 +121,8 @@ PushCommandList :: inline (lists : *DrawCommandLists)
     {
         result.current_texture = lists.last.current_texture;
         result.current_shader = lists.last.current_shader;
+        result.current_clipping_state = lists.last.current_clipping_state;
+        result.current_clip_rect = lists.last.current_clip_rect;
 
         assert (lists.last.next == null);
         lists.last.next = result;
@@ -174,6 +188,8 @@ AllCommands :: (list : *DrawCommandList, body : Code, flags : For_Flags) #expand
             current_offset += size_of (SetShaderParamsCommand);
         case .Set_Texture;
             current_offset += size_of (SetTextureCommand);
+        case .Set_Clipping;
+            current_offset += size_of (SetClippingCommand);
         case .Draw_Vertices;
             current_offset += size_of (DrawVerticesCommand);
         }
@@ -273,6 +289,58 @@ SetShaderParams :: (params : ..ShaderParam, lists : *DrawCommandLists = null)
         i += to_copy;
         cmd.param_count += to_copy;
     }
+}
+
+GetClipping :: (lists : *DrawCommandLists = null) -> bool, Recti
+{
+    if !lists
+        lists = *g_draw_lists;
+
+    if !lists.last
+        return false, .{};
+
+    return lists.last.current_clipping_state, lists.last.current_clip_rect;
+}
+
+SetClipping :: (enabled : bool, rect : Recti, lists : *DrawCommandLists = null)
+{
+    if !lists
+        lists = *g_draw_lists;
+
+    if lists.last
+    {
+        if !enabled && !lists.last.current_clipping_state
+            return;
+        if enabled && lists.last.current_clipping_state && rect == lists.last.current_clip_rect
+            return;
+    }
+
+    if !CanPushCommand (lists.last, size_of (SetClippingCommand))
+    {
+        PushCommandList (lists);
+    }
+
+    cmd := PushCommand (lists.last, SetClippingCommand);
+    cmd.enabled = enabled;
+    cmd.rect = rect;
+
+    lists.last.current_clipping_state = enabled;
+    lists.last.current_clip_rect = rect;
+}
+
+DisableClipping :: inline (lists : *DrawCommandLists = null)
+{
+    SetClipping (false, .{}, lists);
+}
+
+SetClipRect :: inline (rect : Rect, lists : *DrawCommandLists = null)
+{
+    SetClipping (true, Recti.{xx rect.x, xx rect.y, xx rect.w, xx rect.h}, lists);
+}
+
+SetClipRect :: inline (rect : Recti, lists : *DrawCommandLists = null)
+{
+    SetClipping (true, rect);
 }
 
 CanPushVertices :: inline (list : *DrawCommandList, count : s32) -> bool #must

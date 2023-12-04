@@ -120,6 +120,8 @@ main :: ()
         rect.y = height - 10.0 - rect.h;
 
         Stylo.PushRect (rect, color = .{0.0581, 0.791, 0.830, 1});
+
+        Stylo.SetClipRect (rect);
         Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap_Word);
 
         Stylo.GLRenderCommandLists (Stylo.GetGlobalCommandLists (), width, height);

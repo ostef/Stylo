@@ -114,9 +114,11 @@ GLRenderCommandLists :: (lists : *DrawCommandLists, width : s32, height : s32)
     GL_Utils.BlendFuncStateBlock ();
     GL_Utils.DisableBlock (GL_DEPTH_TEST);
     GL_Utils.DisableBlock (GL_CULL_FACE);
+    GL_Utils.DisableBlock (GL_SCISSOR_TEST);
     GL_Utils.StateBlock (GL_ACTIVE_TEXTURE, (prev : GLenum) {glActiveTexture (prev);});
     GL_Utils.StateBlock (GL_TEXTURE_BINDING_2D, (prev : GLuint) {glBindTexture (GL_TEXTURE_2D, prev);});
     GL_Utils.StateBlock (GL_CURRENT_PROGRAM, (prev : GLuint) {glUseProgram (prev);});
+    GL_Utils.StateBlock (GL_SCISSOR_BOX, 4, (v : [4]GLint) {glScissor (v[0], v[1], xx v[2], xx v[3]);});
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -165,6 +167,19 @@ GLRenderCommandLists :: (lists : *DrawCommandLists, width : s32, height : s32)
 
                 glUniform1i (loc_use_texture, cast (s32) (cmd.texture != 0));
                 glBindTexture (GL_TEXTURE_2D, cmd.texture);
+
+            case .Set_Clipping;
+                cmd := cast (*SetClippingCommand) draw_cmd;
+
+                if cmd.enabled
+                {
+                    glEnable (GL_SCISSOR_TEST);
+                    glScissor (cmd.rect.x, cmd.rect.y, xx cmd.rect.w, xx cmd.rect.h);
+                }
+                else
+                {
+                    glDisable (GL_SCISSOR_TEST);
+                }
 
             case .Draw_Vertices;
                 cmd := cast (*DrawVerticesCommand) draw_cmd;

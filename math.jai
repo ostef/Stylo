@@ -6,6 +6,11 @@ Rect :: struct
     position, size : Vec2f;
 }
 
+Recti :: struct
+{
+    x, y, w, h : s32;
+}
+
 MakeRectMinMax :: inline (min : Vec2f, max : Vec2f) -> Rect #must
 {
     return .{min.x, min.y, max.x - min.x, max.y - min.y};
@@ -159,6 +164,16 @@ operator == :: inline (a : Mat3f, b : Mat3f) -> bool #must
 }
 
 operator == :: inline (a : Mat4f, b : Mat4f) -> bool #must
+{
+    return memcmp (*a, *b, size_of (type_of (a))) == 0;
+}
+
+operator == :: inline (a : Rect, b : Rect) -> bool #must
+{
+    return memcmp (*a, *b, size_of (type_of (a))) == 0;
+}
+
+operator == :: inline (a : Recti, b : Recti) -> bool #must
 {
     return memcmp (*a, *b, size_of (type_of (a))) == 0;
 }
