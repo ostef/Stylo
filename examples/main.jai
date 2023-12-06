@@ -124,7 +124,7 @@ main :: ()
         Stylo.SetClipRect (rect);
         Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap_Word);
 
-        Stylo.GLRenderCommandLists (Stylo.GetGlobalCommandLists (), width, height);
+        Stylo.GLRenderCommandList (Stylo.GetGlobalCommandList (), width, height);
 
         Win32.SwapBuffers (hdc);
     }

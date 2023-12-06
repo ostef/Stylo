@@ -1,12 +1,12 @@
-DrawCommandLists :: struct
-{
-    first : *DrawCommandList;
-    #as last : *DrawCommandList;
-}
-
 DrawCommandList :: struct
 {
-    next : *DrawCommandList;
+    first : *DrawCommandBuffer;
+    #as last : *DrawCommandBuffer;
+}
+
+DrawCommandBuffer :: struct
+{
+    next : *DrawCommandBuffer;
 
     current_texture : TextureHandle;
     current_shader : ShaderHandle;
@@ -85,76 +85,76 @@ DrawVerticesCommand :: struct
 
 #scope_module
 
-g_draw_lists : DrawCommandLists;
+g_draw_list : DrawCommandList;
 
 #scope_export
 
-GetGlobalCommandLists :: inline () -> *DrawCommandLists #must
+GetGlobalCommandList :: inline () -> *DrawCommandList #must
 {
-    return *g_draw_lists;
+    return *g_draw_list;
 }
 
-CanPushCommand :: inline (list : *DrawCommandList, size : int) -> bool #must
+CanPushCommand :: inline (buff : *DrawCommandBuffer, size : int) -> bool #must
 {
-    return list != null && list.command_offset + size <= Command_Buffer_Size;
+    return buff != null && buff.command_offset + size <= Command_Buffer_Size;
 }
 
-GetLastCommand :: inline (list : *DrawCommandList) -> *DrawCommand #must
+GetLastCommand :: inline (buff : *DrawCommandBuffer) -> *DrawCommand #must
 {
-    if !list || list.command_count == 0
+    if !buff || buff.command_count == 0
         return null;
 
-    result := cast (*DrawCommand) (list.command_buffer.data + list.last_command_offset);
+    result := cast (*DrawCommand) (buff.command_buffer.data + buff.last_command_offset);
 
     return result;
 }
 
-PushCommandList :: inline (lists : *DrawCommandLists)
+PushCommandList :: inline (list : *DrawCommandList)
 {
-    result := New (DrawCommandList);
+    result := New (DrawCommandBuffer);
 
-    first := lists.first == null;
+    first := list.first == null;
     if first
-        lists.first = result;
+        list.first = result;
 
-    if lists.last
+    if list.last
     {
-        result.current_texture = lists.last.current_texture;
-        result.current_shader = lists.last.current_shader;
-        result.current_clipping_state = lists.last.current_clipping_state;
-        result.current_clip_rect = lists.last.current_clip_rect;
+        result.current_texture = list.last.current_texture;
+        result.current_shader = list.last.current_shader;
+        result.current_clipping_state = list.last.current_clipping_state;
+        result.current_clip_rect = list.last.current_clip_rect;
 
-        assert (lists.last.next == null);
-        lists.last.next = result;
+        assert (list.last.next == null);
+        list.last.next = result;
     }
 
-    lists.last = result;
+    list.last = result;
 
     if first
-        SetShader (GetDefaultShader (), lists);
+        SetShader (GetDefaultShader (), list);
 }
 
-PushCommand :: (list : *DrawCommandList, $T : Type) -> *T #must
+PushCommand :: (buff : *DrawCommandBuffer, $T : Type) -> *T #must
 #modify { #import "Compiler"; return is_subclass_of (cast (*Type_Info) T, "DrawCommand"); }
 {
-    assert (list != null, "List is null");
-    assert (list.command_offset + size_of (T) <= Command_Buffer_Size);
+    assert (buff != null, "List is null");
+    assert (buff.command_offset + size_of (T) <= Command_Buffer_Size);
 
     // @Incomplete: what about alignment?
-    result := cast (*T) (list.command_buffer.data + list.command_offset);
+    result := cast (*T) (buff.command_buffer.data + buff.command_offset);
     Initialize (result);
 
-    list.last_command_offset = list.command_offset;
-    list.command_offset += size_of (T);
-    list.command_count += 1;
+    buff.last_command_offset = buff.command_offset;
+    buff.command_offset += size_of (T);
+    buff.command_count += 1;
 
     return result;
 }
 
-for_expansion :: (list : *DrawCommandList, body : Code, flags : For_Flags) #expand
+for_expansion :: (buff : *DrawCommandBuffer, body : Code, flags : For_Flags) #expand
 {
     `it_index := 0;
-    `it := list;
+    `it := buff;
     while it
     {
         next := it.next;
@@ -167,20 +167,20 @@ for_expansion :: (list : *DrawCommandList, body : Code, flags : For_Flags) #expa
     }
 }
 
-AllCommands :: (list : *DrawCommandList, body : Code, flags : For_Flags) #expand
+AllCommands :: (buff : *DrawCommandBuffer, body : Code, flags : For_Flags) #expand
 {
     current_offset := 0;
     `it_index := 0;
-    while current_offset < list.command_offset && it_index < list.command_count
+    while current_offset < buff.command_offset && it_index < buff.command_count
     {
         defer it_index += 1;
 
-        `it := cast (*DrawCommand) (list.command_buffer.data + current_offset);
+        `it := cast (*DrawCommand) (buff.command_buffer.data + current_offset);
         if #complete it.kind ==
         {
         case; #through;
         case .Invalid;
-            log_error ("Invalid command in command list");
+            log_error ("Invalid command in command buff");
             break;
         case .Set_Shader;
             current_offset += size_of (SetShaderCommand);
@@ -198,75 +198,75 @@ AllCommands :: (list : *DrawCommandList, body : Code, flags : For_Flags) #expand
     }
 }
 
-GetTexture :: inline (lists : *DrawCommandLists = null) -> TextureHandle #must
+GetTexture :: inline (list : *DrawCommandList = null) -> TextureHandle #must
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if !lists.last
+    if !list.last
         return 0;
 
-    return lists.last.current_texture;
+    return list.last.current_texture;
 }
 
-SetTexture :: (texture : TextureHandle, lists : *DrawCommandLists = null)
+SetTexture :: (texture : TextureHandle, list : *DrawCommandList = null)
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if GetTexture (lists) == texture
+    if GetTexture (list) == texture
         return;
 
-    if !CanPushCommand (lists.last, size_of (SetTextureCommand))
+    if !CanPushCommand (list.last, size_of (SetTextureCommand))
     {
-        PushCommandList (lists);
+        PushCommandList (list);
     }
 
-    cmd := PushCommand (lists.last, SetTextureCommand);
+    cmd := PushCommand (list.last, SetTextureCommand);
     cmd.texture = texture;
-    lists.last.current_texture = texture;
+    list.last.current_texture = texture;
 }
 
-GetShader :: inline (lists : *DrawCommandLists = null) -> ShaderHandle #must
+GetShader :: inline (list : *DrawCommandList = null) -> ShaderHandle #must
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if !lists.last
+    if !list.last
         return 0;
 
-    return lists.last.current_shader;
+    return list.last.current_shader;
 }
 
-SetShader :: (shader : ShaderHandle, lists : *DrawCommandLists = null)
+SetShader :: (shader : ShaderHandle, list : *DrawCommandList = null)
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if GetShader (lists) == shader
+    if GetShader (list) == shader
         return;
 
-    if !CanPushCommand (lists.last, size_of (SetShaderCommand))
+    if !CanPushCommand (list.last, size_of (SetShaderCommand))
     {
-        PushCommandList (lists);
+        PushCommandList (list);
     }
 
-    cmd := PushCommand (lists.last, SetShaderCommand);
+    cmd := PushCommand (list.last, SetShaderCommand);
     cmd.shader = shader;
-    lists.last.current_shader = shader;
+    list.last.current_shader = shader;
 }
 
-SetShaderParams :: (params : ..ShaderParam, lists : *DrawCommandLists = null)
+SetShaderParams :: (params : ..ShaderParam, list : *DrawCommandList = null)
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
     if params.count == 0
         return;
 
     i : s32 = 0;
 
-    cmd := cast (*SetShaderParamsCommand) GetLastCommand (lists.last);
+    cmd := cast (*SetShaderParamsCommand) GetLastCommand (list.last);
     if cmd && cmd.kind == .Set_Shader_Params && cmd.param_count < Max_Shader_Params_Per_Command
     {
         to_copy := cast (s8) min (params.count, Max_Shader_Params_Per_Command - cmd.param_count);
@@ -276,12 +276,12 @@ SetShaderParams :: (params : ..ShaderParam, lists : *DrawCommandLists = null)
 
     while i < params.count
     {
-        if !CanPushCommand (lists.last, size_of (SetShaderParamsCommand))
+        if !CanPushCommand (list.last, size_of (SetShaderParamsCommand))
         {
-            PushCommandList (lists);
+            PushCommandList (list);
         }
 
-        cmd := PushCommand (lists.last, SetShaderParamsCommand);
+        cmd := PushCommand (list.last, SetShaderParamsCommand);
 
         to_copy := cast (s8) min (params.count - i, Max_Shader_Params_Per_Command);
         memcpy (cmd.params.data, params.data + i, to_copy);
@@ -291,92 +291,92 @@ SetShaderParams :: (params : ..ShaderParam, lists : *DrawCommandLists = null)
     }
 }
 
-GetClipping :: (lists : *DrawCommandLists = null) -> bool #must, Recti #must
+GetClipping :: (list : *DrawCommandList = null) -> bool #must, Recti #must
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if !lists.last
+    if !list.last
         return false, .{};
 
-    return lists.last.current_clipping_state, lists.last.current_clip_rect;
+    return list.last.current_clipping_state, list.last.current_clip_rect;
 }
 
-SetClipping :: (enabled : bool, rect : Recti, lists : *DrawCommandLists = null)
+SetClipping :: (enabled : bool, rect : Recti, list : *DrawCommandList = null)
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if lists.last
+    if list.last
     {
-        if !enabled && !lists.last.current_clipping_state
+        if !enabled && !list.last.current_clipping_state
             return;
-        if enabled && lists.last.current_clipping_state && rect == lists.last.current_clip_rect
+        if enabled && list.last.current_clipping_state && rect == list.last.current_clip_rect
             return;
     }
 
-    if !CanPushCommand (lists.last, size_of (SetClippingCommand))
+    if !CanPushCommand (list.last, size_of (SetClippingCommand))
     {
-        PushCommandList (lists);
+        PushCommandList (list);
     }
 
-    cmd := PushCommand (lists.last, SetClippingCommand);
+    cmd := PushCommand (list.last, SetClippingCommand);
     cmd.enabled = enabled;
     cmd.rect = rect;
 
-    lists.last.current_clipping_state = enabled;
-    lists.last.current_clip_rect = rect;
+    list.last.current_clipping_state = enabled;
+    list.last.current_clip_rect = rect;
 }
 
-DisableClipping :: inline (lists : *DrawCommandLists = null)
+DisableClipping :: inline (list : *DrawCommandList = null)
 {
-    SetClipping (false, .{}, lists);
+    SetClipping (false, .{}, list);
 }
 
-SetClipRect :: inline (rect : Rect, lists : *DrawCommandLists = null)
+SetClipRect :: inline (rect : Rect, list : *DrawCommandList = null)
 {
-    SetClipping (true, Recti.{xx rect.x, xx rect.y, xx rect.w, xx rect.h}, lists);
+    SetClipping (true, Recti.{xx rect.x, xx rect.y, xx rect.w, xx rect.h}, list);
 }
 
-SetClipRect :: inline (rect : Recti, lists : *DrawCommandLists = null)
+SetClipRect :: inline (rect : Recti, list : *DrawCommandList = null)
 {
     SetClipping (true, rect);
 }
 
-CanPushVertices :: inline (list : *DrawCommandList, count : s32) -> bool #must
+CanPushVertices :: inline (buff : *DrawCommandBuffer, count : s32) -> bool #must
 {
-    return list != null && list.vertex_count + count <= Max_Vertices_Per_Draw_List;
+    return buff != null && buff.vertex_count + count <= Max_Vertices_Per_Draw_List;
 }
 
-PushVertices :: (count : s32, lists : *DrawCommandLists = null) -> *Vertex #must
+PushVertices :: (count : s32, list : *DrawCommandList = null) -> *Vertex #must
 {
-    if !lists
-        lists = *g_draw_lists;
+    if !list
+        list = *g_draw_list;
 
-    if !CanPushVertices (lists.last, count) || !CanPushCommand (lists.last, size_of (DrawVerticesCommand))
+    if !CanPushVertices (list.last, count) || !CanPushCommand (list.last, size_of (DrawVerticesCommand))
     {
-        PushCommandList (lists);
+        PushCommandList (list);
     }
 
-    cmd := cast (*DrawVerticesCommand) GetLastCommand (lists.last);
+    cmd := cast (*DrawVerticesCommand) GetLastCommand (list.last);
     if cmd && cmd.kind == .Draw_Vertices
     {
         cmd.count += count;
 
-        result := lists.last.vertices.data + lists.last.vertex_count;
+        result := list.last.vertices.data + list.last.vertex_count;
 
-        lists.last.vertex_count += count;
+        list.last.vertex_count += count;
 
         return result;
     }
 
-    cmd = PushCommand (lists.last, DrawVerticesCommand);
-    cmd.offset = lists.last.vertex_count;
+    cmd = PushCommand (list.last, DrawVerticesCommand);
+    cmd.offset = list.last.vertex_count;
     cmd.count = count;
 
-    result := lists.last.vertices.data + lists.last.vertex_count;
+    result := list.last.vertices.data + list.last.vertex_count;
 
-    lists.last.vertex_count += count;
+    list.last.vertex_count += count;
 
     return result;
 }

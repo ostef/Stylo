@@ -70,7 +70,7 @@ SetShaderParam :: inline (param : ShaderParam)
     }
 }
 
-GLRenderCommandLists :: (lists : *DrawCommandLists, width : s32, height : s32)
+GLRenderCommandList :: (list : *DrawCommandList, width : s32, height : s32)
 {
     #import "GL";
     GL_Utils :: #import,file "GL_Utils.jai";
@@ -131,7 +131,7 @@ GLRenderCommandLists :: (lists : *DrawCommandLists, width : s32, height : s32)
     else
         view_projection_matrix := MakeOrthograpicProjection (0, xx width, 0, xx height, 0, 1);
 
-    for lists.first
+    for list.first
     {
         glBufferSubData (GL_ARRAY_BUFFER, 0, size_of (Vertex) * it.vertex_count, it.vertices.data);
 
@@ -190,8 +190,8 @@ GLRenderCommandLists :: (lists : *DrawCommandLists, width : s32, height : s32)
         free (it);
     }
 
-    lists.first = null;
-    lists.last = null;
+    list.first = null;
+    list.last = null;
 }
 
 CreateTexture :: (width : u32, height : u32, data : *void) -> TextureHandle #must

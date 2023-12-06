@@ -86,10 +86,10 @@ PushTriangle :: (
     uv0 : Vec2f,
     uv1 : Vec2f,
     uv2 : Vec2f,
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
-    v := PushVertices (3, lists);
+    v := PushVertices (3, list);
 
     v.position = p0;
     v.tex_coords = uv0;
@@ -112,14 +112,14 @@ PushRect :: inline (
     rect : Rect,
     color := Vec4f.{1,1,1,1},
     uv_rect := Rect.{0, 0, 1, 1},
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
     PushRect (
         .{rect.x, rect.y}, .{rect.x + rect.w, rect.y + rect.h},
         color,
         .{uv_rect.x, uv_rect.y}, .{uv_rect.x + uv_rect.w, uv_rect.y + uv_rect.h},
-        lists
+        list
     );
 }
 
@@ -129,10 +129,10 @@ PushRect :: (
     color := Vec4f.{1,1,1,1},
     uv_min := Vec2f.{0,0},
     uv_max := Vec2f.{1,1},
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
-    v := PushVertices (6, lists);
+    v := PushVertices (6, list);
 
     v.position = min;
     v.tex_coords = uv_min;
@@ -185,12 +185,12 @@ PushRoundedRect :: inline (
     color := Vec4f.{1,1,1,1},
     corners := RectCornerFlags.All,
     uv_rect := Rect.{0,0,1,1},
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
     min, max := RectMinMax (rect);
     uv_min, uv_max := RectMinMax (uv_rect);
-    PushRoundedRect (min, max, radius, color, corners, uv_min, uv_max, lists);
+    PushRoundedRect (min, max, radius, color, corners, uv_min, uv_max, list);
 }
 
 PushRoundedRect :: (
@@ -201,7 +201,7 @@ PushRoundedRect :: (
     corners := RectCornerFlags.All,
     uv_min := Vec2f.{0,0},
     uv_max := Vec2f.{1,1},
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
     FourthCircle :: (
@@ -214,7 +214,7 @@ PushRoundedRect :: (
         max : Vec2f,
         uv_min : Vec2f,
         uv_max : Vec2f,
-        lists : *DrawCommandLists
+        list : *DrawCommandList
     )
     {
         if resolution <= 0
@@ -241,7 +241,7 @@ PushRoundedRect :: (
                 uv_min.y + ((second.y - min.y) / (max.y - min.y)) * (uv_max.y - uv_min.y)
             };
 
-            v := PushVertices (3, lists);
+            v := PushVertices (3, list);
             v.position = center;
             v.tex_coords = center_uv;
             v.color = color;
@@ -262,7 +262,7 @@ PushRoundedRect :: (
 
     if !corners || radius <= 0
     {
-        PushRect (min, max, color, uv_min, uv_max, lists);
+        PushRect (min, max, color, uv_min, uv_max, list);
         return;
     }
 
@@ -280,39 +280,39 @@ PushRoundedRect :: (
     // @Incomplete: if !Origin_Top_Left, top and bottom are reversed
 
     // Top
-    PushRect (.{xx1, y1}, .{xx2, yy1}, color, lists = lists);
+    PushRect (.{xx1, y1}, .{xx2, yy1}, color, list = list);
     // Right
-    PushRect (.{xx2, yy1}, .{x2, yy2}, color, lists = lists);
+    PushRect (.{xx2, yy1}, .{x2, yy2}, color, list = list);
     // Bottom
-    PushRect (.{xx1, yy2}, .{xx2, y2}, color, lists = lists);
+    PushRect (.{xx1, yy2}, .{xx2, y2}, color, list = list);
     // Left
-    PushRect (.{x1, yy1}, .{xx1, yy2}, color, lists = lists);
+    PushRect (.{x1, yy1}, .{xx1, yy2}, color, list = list);
     // Center
-    PushRect (.{xx1, yy1}, .{xx2, yy2}, color, lists = lists);
+    PushRect (.{xx1, yy1}, .{xx2, yy2}, color, list = list);
 
     // Bottom right
     if corners & .Bottom_Right
-        FourthCircle (.{xx2, yy2}, radius, 0, color, 0, min, max, uv_min, uv_max, lists);
+        FourthCircle (.{xx2, yy2}, radius, 0, color, 0, min, max, uv_min, uv_max, list);
     else
-        PushRect (.{xx2, yy2}, .{x2, y2}, color, lists = lists);
+        PushRect (.{xx2, yy2}, .{x2, y2}, color, list = list);
 
     // Bottom left
     if corners & .Bottom_Left
-        FourthCircle (.{xx1, yy2}, radius, 0, color, 1, min, max, uv_min, uv_max, lists);
+        FourthCircle (.{xx1, yy2}, radius, 0, color, 1, min, max, uv_min, uv_max, list);
     else
-        PushRect (.{x1, yy2}, .{xx1, y2}, color, lists = lists);
+        PushRect (.{x1, yy2}, .{xx1, y2}, color, list = list);
 
     // Top left
     if corners & .Top_Left
-        FourthCircle (.{xx1, yy1}, radius, 0, color, 2, min, max, uv_min, uv_max, lists);
+        FourthCircle (.{xx1, yy1}, radius, 0, color, 2, min, max, uv_min, uv_max, list);
     else
-        PushRect (.{x1, y1}, .{xx1, yy1}, color, lists = lists);
+        PushRect (.{x1, y1}, .{xx1, yy1}, color, list = list);
 
     // Top right
     if corners & .Top_Right
-        FourthCircle (.{xx2, yy1}, radius, 0, color, 3, min, max, uv_min, uv_max, lists);
+        FourthCircle (.{xx2, yy1}, radius, 0, color, 3, min, max, uv_min, uv_max, list);
     else
-        PushRect (.{xx2, y1}, .{x2, yy2}, color, lists = lists);
+        PushRect (.{xx2, y1}, .{x2, yy2}, color, list = list);
 }
 
 // Goes clockwise, starting from +X axis
@@ -325,7 +325,7 @@ PushSemiCircle :: (
     resolution := 0,
     uv_center := Vec2f.{ 0.5, 0.5 },
     uv_radius :=  0.5,
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
     if radius <= 0
@@ -358,7 +358,7 @@ PushSemiCircle :: (
             uv0 = uv_center,
             uv1 = uv_center + p1 * uv_radius,
             uv2 = uv_center + p2 * uv_radius,
-            lists = lists
+            list = list
         );
     }
 }
@@ -370,8 +370,8 @@ PushCircle :: (
     resolution := 0,
     uv_center := Vec2f.{0.5, 0.5},
     uv_radius := 0.5,
-    lists : *DrawCommandLists = null
+    list : *DrawCommandList = null
 )
 {
-    PushSemiCircle (center, radius, 0, 2 * Math.PI, color, resolution, uv_center, uv_radius, lists);
+    PushSemiCircle (center, radius, 0, 2 * Math.PI, color, resolution, uv_center, uv_radius, list);
 }
