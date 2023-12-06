@@ -569,7 +569,8 @@ PushText :: inline (
     position : Vec2f,
     color := Vec4f.{1,1,1,1},
     align := Vec2f.{0,0},
-    font : *Font = null
+    font : *Font = null,
+    lists : *DrawCommandLists = null
 ) -> Rect
 {
     return PushText (
@@ -579,7 +580,8 @@ PushText :: inline (
         color,
         align,
         OverflowBehavior.None,
-        font
+        font,
+        lists
     );
 }
 
