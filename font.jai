@@ -3,7 +3,6 @@
 Unicode :: #import "Unicode";
 
 // @Todo: test performance of ASCII optimization
-// @Todo: test performance of glyph blitting (I've heard glTexSubImage2D can be slow)
 
 // How fonts work in Stylo:
 // We have a Font struct, that has a FreeType Face, and what we call
@@ -26,6 +25,7 @@ Unicode :: #import "Unicode";
 // This is here so we can test the performance of this optimization.
 // It will go away eventually.
 Enable_ASCII_Glyph_Array :: true;
+Profile_Glyph_Blitting :: true;
 
 Utf8String :: struct
 {
@@ -342,6 +342,25 @@ FitRectIntoAtlas :: (atlas : GlyphAtlas, width : s32, height : s32) -> bool #mus
     return true, pen_x, pen_y;
 }
 
+#if Profile_Glyph_Blitting
+{
+
+#scope_file
+
+g_glyph_blit_profile_time : Apollo_Time;
+g_glyph_blit_profile_min : Apollo_Time = .{low=0xffffffffffffffff, high=0x7fffffffffffffff};
+g_glyph_blit_profile_max : Apollo_Time = .{low=0x0000000000000000, high=0x8000000000000000};
+g_glyph_blit_profile_count : int;
+
+#scope_export
+
+GetGlyphBlittingProfileResults :: inline () -> avg : Apollo_Time, min : Apollo_Time, max : Apollo_Time
+{
+    return g_glyph_blit_profile_time / g_glyph_blit_profile_count, g_glyph_blit_profile_min, g_glyph_blit_profile_max;
+}
+
+}
+
 RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
 {
     glyph, new := FindOrAddGlyph (page, codepoint);
@@ -405,12 +424,26 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
             }
         }
 
+        #if Profile_Glyph_Blitting
+            start_time := current_time_monotonic ();
+
         BlitToTexture (
             atlas.texture,
             glyph_x, glyph_y,
             glyph.bitmap_width, glyph.bitmap_height,
             rgba_bitmap
         );
+
+        #if Profile_Glyph_Blitting
+        {
+            blit_time := current_time_monotonic () - start_time;
+            if blit_time < g_glyph_blit_profile_min
+                g_glyph_blit_profile_min = blit_time;
+            if blit_time > g_glyph_blit_profile_max
+                g_glyph_blit_profile_max = blit_time;
+            g_glyph_blit_profile_time += blit_time;
+            g_glyph_blit_profile_count += 1;
+        }
     }
 
     glyph.uv_rect = .{

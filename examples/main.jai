@@ -130,6 +130,15 @@ main :: ()
 
         Win32.SwapBuffers (hdc);
     }
+
+    {
+        avg, min, max := Stylo.GetGlyphBlittingProfileResults ();
+        print ("Glyph blitting profile results:\n  avg: % ms\n  min: % ms\n  max: % ms\n",
+            to_float64_seconds (avg) * 1000,
+            to_float64_seconds (min) * 1000,
+            to_float64_seconds (max) * 1000
+        );
+    }
 }
 
 // The result is null terminated even though a Jai string is returned
