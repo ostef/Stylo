@@ -7,6 +7,9 @@
     Default_Glyph_Atlas_Width  := 1024,
     Default_Glyph_Atlas_Height := 1024
 )
+(
+    Profile_Glyph_Blitting := false
+)
 {
     MathTypes :: struct
     {

@@ -9,7 +9,7 @@ Win32 :: #import "Win32" (
 
 #import "GL";
 
-Stylo :: #import, file "../module.jai";
+Stylo :: #import, file "../module.jai" () (Profile_Glyph_Blitting = true);
 
 g_quit := false;
 

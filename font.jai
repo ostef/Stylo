@@ -25,7 +25,6 @@ Unicode :: #import "Unicode";
 // This is here so we can test the performance of this optimization.
 // It will go away eventually.
 Enable_ASCII_Glyph_Array :: true;
-Profile_Glyph_Blitting :: true;
 
 Utf8String :: struct
 {
