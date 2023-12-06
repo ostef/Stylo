@@ -291,7 +291,7 @@ SetShaderParams :: (params : ..ShaderParam, lists : *DrawCommandLists = null)
     }
 }
 
-GetClipping :: (lists : *DrawCommandLists = null) -> bool, Recti
+GetClipping :: (lists : *DrawCommandLists = null) -> bool #must, Recti #must
 {
     if !lists
         lists = *g_draw_lists;
