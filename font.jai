@@ -164,19 +164,8 @@ OverflowBehavior :: enum
     Wrap_Word;
 }
 
-GetDefaultFont :: inline () -> *Font #must
-{
-    return g_default_font;
-}
-
-SetDefaultFont :: inline (font : *Font)
-{
-    g_default_font = font;
-}
-
 #scope_file
 
-g_default_font : *Font;
 g_ft_lib : FT_Library;
 
 InitFonts :: () -> bool
@@ -531,12 +520,6 @@ for_expansion :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #ex
 
 CalculateTextExtents :: inline (text : string, height : u32, rect : Rect, overflow : OverflowBehavior, font : *Font = null) -> Vec2f #must
 {
-    if !font
-    {
-        assert (g_default_font != null);
-        font = g_default_font;
-    }
-
     page := LoadFontPage (font, height);
 
     return CalculateTextExtents (text, rect, overflow, page);
@@ -564,46 +547,40 @@ CalculateTextExtents :: (text : string, rect : Rect, overflow : OverflowBehavior
 }
 
 PushText :: inline (
+    list : *DrawCommandList,
+    font : *Font,
     text : string,
     height : u32,
     position : Vec2f,
     color := Vec4f.{1,1,1,1},
-    align := Vec2f.{0,0},
-    font : *Font = null,
-    list : *DrawCommandList = null
+    align := Vec2f.{0,0}
 ) -> Rect
 {
     return PushText (
+        list,
+        font,
         text,
         height,
         .{position.x, position.y, 0, 0},
         color,
         align,
-        OverflowBehavior.None,
-        font,
-        list
+        OverflowBehavior.None
     );
 }
 
 PushText :: (
+    list : *DrawCommandList,
+    font : *Font,
     text : string,
     height : u32,
     rect : Rect,
     color := Vec4f.{1,1,1,1},
     align := Vec2f.{0,0},
-    overflow := OverflowBehavior.None,
-    font : *Font = null,
-    list : *DrawCommandList = null
+    overflow := OverflowBehavior.None
 ) -> Rect
 {
-    if !font
-    {
-        assert (g_default_font != null);
-        font = g_default_font;
-    }
-
     prev_texture := GetTexture (list);
-    defer SetTexture (prev_texture, list);
+    defer SetTexture (list, prev_texture);
 
     iter : TextGlyphIterator;
     iter.text = text;
@@ -639,7 +616,7 @@ PushText :: (
             };
         }
 
-        SetTexture (`glyph.atlas_texture, `list);
+        SetTexture (`list, `glyph.atlas_texture);
 
         uv_rect := `glyph.uv_rect;
         #if Origin_Top_Left
@@ -648,7 +625,7 @@ PushText :: (
             uv_rect.y -= uv_rect.h;
         }
 
-        PushRect (glyph_rect, `color, uv_rect, list = `list);
+        PushRect (`list, glyph_rect, `color, uv_rect);
     }
 
     if overflow == .Wrap_Word

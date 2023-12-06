@@ -76,9 +76,9 @@ main :: ()
 
     assert (glGenVertexArrays != null, "Could not load GL functions");
 
+    draw_list : Stylo.DrawCommandList;
     font := Stylo.LoadFontFromFile ("Roboto-Regular.ttf");
     assert (font != null);
-    Stylo.SetDefaultFont (font);
 
     while !g_quit
     {
@@ -102,12 +102,14 @@ main :: ()
         glClear (GL_COLOR_BUFFER_BIT);
 
         Stylo.PushCircle (
+            *draw_list,
             .{width * 0.5, height * 0.5},
             100,
             color = .{0.7,0.4,0.2,1.0}
         );
 
         Stylo.PushRoundedRect (
+            *draw_list,
             .{300,300,100,100},
             25,
             color = .{0.6,0.2,0.7,1.0}
@@ -119,12 +121,12 @@ main :: ()
         rect.h = 300 + sin (time * 0.5) * 50;
         rect.y = height - 10.0 - rect.h;
 
-        Stylo.PushRect (rect, color = .{0.0581, 0.791, 0.830, 1});
+        Stylo.PushRect (*draw_list, rect, color = .{0.0581, 0.791, 0.830, 1});
 
-        Stylo.SetClipRect (rect);
-        Stylo.PushText (Lorem_Ipsum, 22, rect, overflow = .Wrap_Word);
+        Stylo.SetClipRect (*draw_list, rect);
+        Stylo.PushText (*draw_list, font, Lorem_Ipsum, 22, rect, overflow = .Wrap_Word);
 
-        Stylo.GLRenderCommandList (Stylo.GetGlobalCommandList (), width, height);
+        Stylo.GLRenderCommandList (*draw_list, width, height);
 
         Win32.SwapBuffers (hdc);
     }
