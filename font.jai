@@ -2,8 +2,6 @@
 #import "freetype-2.12.1";
 Unicode :: #import "Unicode";
 
-// @Todo: test performance of ASCII optimization
-
 // How fonts work in Stylo:
 // We have a Font struct, that has a FreeType Face, and what we call
 // font pages. Font pages store glyphs for a given pixel size. Each
@@ -21,10 +19,6 @@ Unicode :: #import "Unicode";
 // usage). You can, however, destroy a font page.
 //
 //                                                   ostef, 21 November 2023
-
-// This is here so we can test the performance of this optimization.
-// It will go away eventually.
-Enable_ASCII_Glyph_Array :: true;
 
 Utf8String :: struct
 {
@@ -62,21 +56,17 @@ for_expansion :: (str : Utf8String, body : Code, flags : For_Flags) #expand
     }
 }
 
-#scope_file
-
-Word :: struct
-{
-    start_byte_index, end_byte_index : s64;
-    str : string;
-    length : s64;
-    spaces : bool;
-}
-
-#scope_export
-
 // for_expansion
 ByWord :: (str : Utf8String, body : Code, flags : For_Flags) #expand
 {
+    Word :: struct
+    {
+        start_byte_index, end_byte_index : s64;
+        str : string;
+        length : s64;
+        spaces : bool;
+    }
+
     `it : Word;
     `it_index := 0;
     if str.count != 0
@@ -128,9 +118,7 @@ FontPage :: struct
     glyphs : Table (u32, Glyph);
     ascent, descent : s32;
     space_advance : u32;    // Advance of the space glyph
-
-    #if Enable_ASCII_Glyph_Array
-        ascii_glyphs : [128]Glyph;
+    ascii_glyphs : [128]Glyph;
 }
 
 Glyph :: struct
@@ -284,14 +272,11 @@ SetGlyphMetrics :: (glyph : *Glyph, slot : *FT_GlyphSlotRec)
 
 FindOrAddGlyph :: inline (using page : *FontPage, codepoint : u32) -> *Glyph #must, new : bool
 {
-    #if Enable_ASCII_Glyph_Array
+    if codepoint < 128
     {
-        if codepoint < 128
-        {
-            glyph := *ascii_glyphs[codepoint];
+        glyph := *ascii_glyphs[codepoint];
 
-            return glyph, codepoint != 0 && glyph.codepoint != codepoint;
-        }
+        return glyph, codepoint != 0 && glyph.codepoint != codepoint;
     }
 
     glyph, new := find_or_add (*glyphs, codepoint);
