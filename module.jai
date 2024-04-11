@@ -114,7 +114,7 @@ PushTriangle :: (
 PushRect :: inline (
     list : *DrawCommandList,
     rect : Rect,
-    color := Vec4f.{1,1,1,1},
+    color : Vec4f,
     uv_rect := Rect.{0, 0, 1, 1}
 )
 {
@@ -130,7 +130,7 @@ PushRect :: (
     list : *DrawCommandList,
     min : Vec2f,
     max : Vec2f,
-    color := Vec4f.{1,1,1,1},
+    color : Vec4f,
     uv_min := Vec2f.{0,0},
     uv_max := Vec2f.{1,1}
 )
@@ -179,6 +179,11 @@ RectCornerFlags :: enum_flags u8
     Bottom_Left;
     Bottom_Right;
 
+    TL :: Top_Left;
+    TR :: Top_Right;
+    BL :: Bottom_Left;
+    BR :: Bottom_Right;
+
     All :: Top_Left | Top_Right | Bottom_Left | Bottom_Right;
 }
 
@@ -186,7 +191,7 @@ PushRoundedRect :: inline (
     list : *DrawCommandList,
     rect : Rect,
     radius : float,
-    color := Vec4f.{1,1,1,1},
+    color : Vec4f,
     corners := RectCornerFlags.All,
     uv_rect := Rect.{0,0,1,1}
 )
@@ -201,7 +206,7 @@ PushRoundedRect :: (
     min : Vec2f,
     max : Vec2f,
     radius : float,
-    color := Vec4f.{1,1,1,1},
+    color : Vec4f,
     corners := RectCornerFlags.All,
     uv_min := Vec2f.{0,0},
     uv_max := Vec2f.{1,1}
@@ -272,7 +277,7 @@ PushSemiCircle :: (
     radius : float,
     start_angle : float,
     angle : float,
-    color := Vec4f.{1,1,1,1},
+    color : Vec4f,
     resolution := 0,
     uv_center := Vec2f.{ 0.5, 0.5 },
     uv_radius :=  0.5
@@ -313,15 +318,57 @@ PushSemiCircle :: (
     }
 }
 
-PushCircle :: (
+PushCircle :: inline (
     list : *DrawCommandList,
     center : Vec2f,
     radius : float,
-    color := Vec4f.{1,1,1,1},
+    color : Vec4f,
     resolution := 0,
     uv_center := Vec2f.{0.5, 0.5},
     uv_radius := 0.5
 )
 {
     PushSemiCircle (list, center, radius, 0, 2 * Math.PI, color, resolution, uv_center, uv_radius);
+}
+
+PushLine :: (
+    list : *DrawCommandList,
+    start : Vec2f,
+    end : Vec2f,
+    thickness : float,
+    color : Vec4f,
+    uv_start := Vec2f.{0,0.5},
+    uv_end := Vec2f.{1,0.5},
+    uv_thickness := 0.5
+)
+{
+    line_dir := Normalized (end - start);
+    theta := Math.atan2 (line_dir.x, -line_dir.y);
+    offset := Vec2f.{Math.cos (theta), Math.sin (theta)} * thickness * 0.5;
+
+    uv_line_dir := Normalized (uv_end - uv_start);
+    uv_theta := Math.atan2 (uv_line_dir.x, -uv_line_dir.y);
+    uv_offset := Vec2f.{Math.cos (uv_theta), Math.sin (uv_theta)} * uv_thickness * 0.5;
+
+    PushTriangle (
+        list,
+        start - offset,
+        start + offset,
+        end + offset,
+        color,
+        uv_start - uv_offset,
+        uv_start + uv_offset,
+        uv_end - uv_offset
+    );
+
+    PushTriangle (
+        list,
+        start - offset,
+        end + offset,
+        end - offset,
+        color,
+        uv_start - uv_offset,
+        uv_start + uv_offset,
+        uv_end - uv_offset
+    );
 }
