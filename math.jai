@@ -83,6 +83,41 @@ MakeOrthograpicProjection :: inline (l : float, r : float, b : float, t : float,
     };
 }
 
+ApproxZero :: inline (a : float, epsilon : float) -> bool #must
+{
+    return Math.abs (a) < epsilon;
+}
+
+ApproxZero :: inline (v : Vec2f, epsilon : float) -> bool #must
+{
+    return ApproxZero (v.x, epsilon) && ApproxZero (v.y, epsilon);
+}
+
+Dot :: inline (a : Vec2f, b : Vec2f) -> float #must
+{
+    return a.x * b.x + a.y * b.y;
+}
+
+Length :: inline (v : Vec2f) -> float #must
+{
+    return Math.sqrt (Dot (v, v));
+}
+
+Normalized :: (v : Vec2f, fallback := Vec2f.{}) -> Vec2f #must, len : float
+{
+    if ApproxZero (v, 0.00001)
+        return fallback, 0;
+
+    len := Length (v);
+
+    return v / len, len;
+}
+
+Round :: inline (a : Vec2f) -> Vec2f #must
+{
+    return .{Round (a.x), Round (a.y)};
+}
+
 operator + :: inline (a : Vec2f, b : Vec2f) -> Vec2f #must
 {
     return .{a.x + b.x, a.y + b.y};
@@ -192,3 +227,4 @@ operator == :: inline (a : Recti, b : Recti) -> bool #must
 {
     return memcmp (*a, *b, size_of (type_of (a))) == 0;
 }
+
