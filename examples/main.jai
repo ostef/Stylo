@@ -9,7 +9,9 @@ Win32 :: #import "Win32" (
 
 #import "GL";
 
-Stylo :: #import, file "../module.jai" () (Profile_Glyph_Blitting = true);
+Stylo :: #import, file "../module.jai" () (
+    Profile_Glyph_Blitting = true
+);
 
 g_quit := false;
 
@@ -22,8 +24,22 @@ main :: ()
         lparam : Win32.LPARAM
     ) -> Win32.LRESULT #c_call
     {
-        if msg == Win32.WM_CLOSE
+        if msg ==
+        {
+        case Win32.WM_CLOSE;
             g_quit = true;
+
+        case Win32.WM_SETCURSOR;
+            if Win32.LOWORD (lparam) == Win32.HTCLIENT
+            {
+                Win32.SetCursor (Win32.LoadCursorW (null, Win32.IDC_ARROW));
+
+                return 0;
+            }
+
+            return Win32.DefWindowProcW (hwnd, msg, wparam, lparam);
+        }
+
 
         return Win32.DefWindowProcW (hwnd, msg, wparam, lparam);
     }
@@ -129,6 +145,8 @@ main :: ()
         Stylo.GLRenderCommandList (*draw_list, width, height);
 
         Win32.SwapBuffers (hdc);
+
+        sleep_milliseconds (10);
     }
 
     {
@@ -142,13 +160,13 @@ main :: ()
 }
 
 // The result is null terminated even though a Jai string is returned
-WideToUtf8 :: (data : *u16, allocator := context.allocator) -> string #must, success : bool
+WideToUtf8 :: (data : *u16) -> string #must, success : bool
 {
     result_length := Win32.WideCharToMultiByte (Win32.CP_UTF8, 0, data, -1, null, 0, null, null);
     if result_length <= 0
         return "", false;
 
-    utf8_data := cast (*u8) alloc (result_length, allocator);
+    utf8_data := cast (*u8) alloc (result_length);
 
     written := Win32.WideCharToMultiByte (Win32.CP_UTF8, 0, data, -1, utf8_data, result_length, null, null);
     if written > 0
@@ -164,11 +182,11 @@ WideToUtf8 :: (data : *u16, allocator := context.allocator) -> string #must, suc
 }
 
 // The result is null terminated
-Utf8ToWide :: (utf8_str : string, allocator := context.allocator) -> wide_str : *u16 #must, length : s32
+Utf8ToWide :: (utf8_str : string) -> wide_str : *u16 #must, length : s32
 {
     if !utf8_str
     {
-        wide_str := cast (*u16) alloc (size_of (u16), allocator);
+        wide_str := cast (*u16) alloc (size_of (u16));
         wide_str[0] = 0;
 
         return wide_str, 0;
@@ -178,7 +196,7 @@ Utf8ToWide :: (utf8_str : string, allocator := context.allocator) -> wide_str : 
     if result_length <= 0
         return null, 0;
 
-    wide_str := cast (*u16) alloc ((result_length + 1) * size_of (u16), allocator);
+    wide_str := cast (*u16) alloc ((result_length + 1) * size_of (u16));
     written := Win32.MultiByteToWideChar (Win32.CP_UTF8, 0, utf8_str.data, cast (s32) utf8_str.count, wide_str, result_length);
     if written > 0
     {

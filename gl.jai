@@ -174,7 +174,15 @@ GLRenderCommandList :: (list : *DrawCommandList, width : s32, height : s32)
                 if cmd.enabled
                 {
                     glEnable (GL_SCISSOR_TEST);
-                    glScissor (cmd.rect.x, cmd.rect.y, xx cmd.rect.w, xx cmd.rect.h);
+
+                    clip_rect := cmd.rect;
+
+                    #if Origin_Top_Left
+                    {
+                        clip_rect.y = height - clip_rect.y - clip_rect.h;
+                    }
+
+                    glScissor (clip_rect.x, clip_rect.y, xx clip_rect.w, xx clip_rect.h);
                 }
                 else
                 {

@@ -397,7 +397,7 @@ RenderGlyph :: (using page : *FontPage, codepoint : u32) -> *Glyph
     {
         auto_release_temp ();
 
-        rgba_bitmap := cast (*u32) alloc (size_of (u32) * glyph.bitmap_width * glyph.bitmap_height, temp);
+        rgba_bitmap := cast (*u32) alloc (size_of (u32) * glyph.bitmap_width * glyph.bitmap_height,, temp);
         for y : 0..glyph.bitmap_height - 1
         {
             for x : 0..glyph.bitmap_width - 1
@@ -471,7 +471,7 @@ WordWrap :: (iter : *TextGlyphIterator, body : Code, flags : For_Flags) #expand
                 glyph := LoadGlyph (iter.page, it);
                 word_text_length += glyph.advance;
             }
-;
+
             if word_text_length < iter.bounds.x && iter.pen.x + word_text_length > iter.bounds.x
             {
                 iter.pen.x = 0;

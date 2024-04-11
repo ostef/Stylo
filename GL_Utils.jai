@@ -68,7 +68,7 @@ CheckShader :: (handle : GLuint, desc : string, location := #caller_location) ->
     {
         if log_length > 1
         {
-            buffer := cast (*u8) alloc (log_length + 1, temp);
+            buffer := cast (*u8) alloc (log_length + 1,, temp);
             glGetShaderInfoLog (handle, xx log_length, null, buffer);
             log_error ("%:\n\n%", desc, to_string (buffer, log_length), loc = location);
         }
@@ -91,7 +91,7 @@ CheckShaderProgram :: (handle : GLuint, desc : string, location := #caller_locat
     {
         if log_length > 1
         {
-            buffer := cast (*u8) alloc (log_length + 1, temp);
+            buffer := cast (*u8) alloc (log_length + 1,, temp);
             glGetProgramInfoLog (handle, xx log_length, null, buffer);
             log_error ("%:\n\n%", desc, to_string (buffer, log_length), loc = location);
         }

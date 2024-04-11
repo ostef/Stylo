@@ -103,14 +103,29 @@ operator - :: inline (a : Vec2f, b : Vec2f) -> Vec2f #must
     return .{a.x - b.x, a.y - b.y};
 }
 
+operator - :: inline (a : Vec2f) -> Vec2f #must
+{
+    return .{-a.x, -a.y};
+}
+
 operator - :: inline (a : Vec3f, b : Vec3f) -> Vec3f #must
 {
     return .{a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
+operator - :: inline (a : Vec3f) -> Vec3f #must
+{
+    return .{-a.x, -a.y, -a.z};
+}
+
 operator - :: inline (a : Vec4f, b : Vec4f) -> Vec4f #must
 {
     return .{a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w};
+}
+
+operator - :: inline (a : Vec4f) -> Vec4f #must
+{
+    return .{-a.x, -a.y, -a.z, -a.w};
 }
 
 operator * :: inline (a : Vec2f, b : float) -> Vec2f #must #symmetric
